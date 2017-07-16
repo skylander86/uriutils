@@ -3,7 +3,7 @@ This module provides wrapper function for transparently handling files regardles
 """
 __all__ = ['uri_open', 'uri_read', 'uri_dump', 'uri_exists', 'get_uri_metadata', 'uri_exists_wait', 'URIFileType', 'URIType', 'DirType']
 
-from contextlib import contextmanager
+# from contextlib import contextmanager
 import gzip
 from io import BytesIO, TextIOWrapper, FileIO, BufferedReader
 import logging
@@ -19,7 +19,6 @@ from .storages import STORAGES, URIBytesOutput
 logger = logging.getLogger(__name__)
 
 
-@contextmanager
 def uri_open(uri, mode='rb', auto_compress=True, in_memory=True, textio_args={}, storage_args={}):
     uri_obj = _get_uri_obj(uri, storage_args)
 
@@ -29,27 +28,22 @@ def uri_open(uri, mode='rb', auto_compress=True, in_memory=True, textio_args={},
     elif mode == 'wb': read_mode, binary_mode = False, True
     else: raise TypeError('`mode` cannot be "{}".'.format(mode))
 
-    temp_file = None
     if read_mode:
         if in_memory:
             file_obj = BytesIO(uri_obj.get_content())
+            setattr(file_obj, 'name', str(uri_obj))
         else:
-            with NamedTemporaryFile(delete=False) as f:
-                temp_file = f.name
-            uri_obj.download_file(temp_file)
-            file_obj = BufferedReader(FileIO(temp_file, 'rb'))
+            file_obj = _TemporaryURIFileIO(uri_obj=uri_obj, input_mode=True)
         #end if
-
-        setattr(file_obj, 'name', str(uri_obj))
     else:
         if in_memory: file_obj = URIBytesOutput(uri_obj)
         else:
-            with NamedTemporaryFile(mode='wb', delete=False) as f:
-                temp_file = f.name
-            file_obj = FileIO(temp_file, 'wb')
+            file_obj = _TemporaryURIFileIO(uri_obj=uri_obj, input_mode=False, pre_close_action=uri_obj.upload_file)
             setattr(file_obj, 'name', str(uri_obj))
         #end if
     #end if
+
+    temp_name = getattr(file_obj, 'temp_name', None)
 
     if auto_compress:
         _, ext = os.path.splitext(uri)
@@ -62,19 +56,9 @@ def uri_open(uri, mode='rb', auto_compress=True, in_memory=True, textio_args={},
         file_obj = TextIOWrapper(file_obj, **textio_args)
     #end if
 
-    if temp_file:
-        setattr(file_obj, 'temp_name', temp_file)
+    setattr(file_obj, 'temp_name', temp_name)
 
-    yield file_obj
-
-    file_obj.close()
-
-    if temp_file is not None:
-        if not read_mode and not in_memory:
-            uri_obj.upload_file(temp_file)
-
-        os.remove(temp_file)
-    #end if
+    return file_obj
 #end def
 
 
@@ -165,5 +149,36 @@ class DirType(object):
                 os.makedirs(uri)
         #end if
         return uri
+    #end def
+#end class
+
+
+class _TemporaryURIFileIO(FileIO):
+    def __init__(self, uri_obj=None, input_mode=True, pre_close_action=None):
+        with NamedTemporaryFile(delete=False) as f:
+            temp_file = f.name
+
+        if input_mode and uri_obj:
+            uri_obj.download_file(temp_file)
+        #end if
+
+        self.uri_obj = uri_obj
+        self.temp_file = temp_file
+        self.pre_close_action = pre_close_action
+
+        super(_TemporaryURIFileIO, self).__init__(temp_file, 'rb' if input_mode else 'wb')
+
+        self.name = str(self.uri_obj)
+    #end def
+
+    @property
+    def temp_name(self):
+        return self.temp_file
+
+    def close(self):
+        super(_TemporaryURIFileIO, self).close()
+
+        if self.pre_close_action: self.pre_close_action(self.temp_file)
+        os.remove(self.temp_file)
     #end def
 #end class
