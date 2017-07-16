@@ -17,7 +17,7 @@ setup(
     url='http://github.com/skylander86/uriutils',
     author='Yanchuan Sim',
     author_email='yanchuan@outlook.com',
-    license='Apache 2.0',
+    license='Apache License 2.0',
     packages=['uriutils'],
     zip_safe=True,
 )
