@@ -106,7 +106,7 @@ def uri_exists_wait(uri, timeout=300, interval=5, storage_args={}):
     uri_obj = _get_uri_obj(uri, storage_args)
     start_time = time.time()
     while time.time() - start_time < timeout:
-        if uri_obj.exists(uri): return True
+        if uri_obj.exists(): return True
         time.sleep(interval)
     #end while
 
