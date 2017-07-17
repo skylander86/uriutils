@@ -56,7 +56,7 @@ def uri_open(uri, mode='rb', auto_compress=True, in_memory=True, textio_args={},
         file_obj = TextIOWrapper(file_obj, **textio_args)
     #end if
 
-    setattr(file_obj, 'temp_name', temp_name)
+    if not hasattr(file_obj, 'temp_name'): setattr(file_obj, 'temp_name', temp_name)
 
     return file_obj
 #end def
@@ -156,29 +156,25 @@ class DirType(object):
 class _TemporaryURIFileIO(FileIO):
     def __init__(self, uri_obj=None, input_mode=True, pre_close_action=None):
         with NamedTemporaryFile(delete=False) as f:
-            temp_file = f.name
+            temp_name = f.name
 
         if input_mode and uri_obj:
-            uri_obj.download_file(temp_file)
+            uri_obj.download_file(temp_name)
         #end if
 
         self.uri_obj = uri_obj
-        self.temp_file = temp_file
+        self.temp_name = temp_name
         self.pre_close_action = pre_close_action
 
-        super(_TemporaryURIFileIO, self).__init__(temp_file, 'rb' if input_mode else 'wb')
+        super(_TemporaryURIFileIO, self).__init__(temp_name, 'rb' if input_mode else 'wb')
 
         self.name = str(self.uri_obj)
     #end def
 
-    @property
-    def temp_name(self):
-        return self.temp_file
-
     def close(self):
         super(_TemporaryURIFileIO, self).close()
 
-        if self.pre_close_action: self.pre_close_action(self.temp_file)
-        os.remove(self.temp_file)
+        if self.pre_close_action: self.pre_close_action(self.temp_name)
+        os.remove(self.temp_name)
     #end def
 #end class
