@@ -5,7 +5,7 @@ __all__ = ['uri_open', 'uri_read', 'uri_dump', 'uri_exists', 'get_uri_metadata',
 
 # from contextlib import contextmanager
 import gzip
-from io import BytesIO, TextIOWrapper, FileIO, BufferedReader
+from io import BytesIO, TextIOWrapper, FileIO
 import logging
 import os
 from tempfile import NamedTemporaryFile
@@ -19,7 +19,7 @@ from .storages import STORAGES, URIBytesOutput
 logger = logging.getLogger(__name__)
 
 
-def uri_open(uri, mode='rb', auto_compress=True, in_memory=True, textio_args={}, storage_args={}):
+def uri_open(uri, mode='rb', auto_compress=True, in_memory=True, delete_tempfile=True, textio_args={}, storage_args={}):
     uri_obj = _get_uri_obj(uri, storage_args)
 
     if mode == 'rb': read_mode, binary_mode = True, True
@@ -33,12 +33,12 @@ def uri_open(uri, mode='rb', auto_compress=True, in_memory=True, textio_args={},
             file_obj = BytesIO(uri_obj.get_content())
             setattr(file_obj, 'name', str(uri_obj))
         else:
-            file_obj = _TemporaryURIFileIO(uri_obj=uri_obj, input_mode=True)
+            file_obj = _TemporaryURIFileIO(uri_obj=uri_obj, input_mode=True, delete_tempfile=delete_tempfile)
         #end if
     else:
         if in_memory: file_obj = URIBytesOutput(uri_obj)
         else:
-            file_obj = _TemporaryURIFileIO(uri_obj=uri_obj, input_mode=False, pre_close_action=uri_obj.upload_file)
+            file_obj = _TemporaryURIFileIO(uri_obj=uri_obj, input_mode=False, pre_close_action=uri_obj.upload_file, delete_tempfile=delete_tempfile)
             setattr(file_obj, 'name', str(uri_obj))
         #end if
     #end if
@@ -154,7 +154,7 @@ class DirType(object):
 
 
 class _TemporaryURIFileIO(FileIO):
-    def __init__(self, uri_obj=None, input_mode=True, pre_close_action=None):
+    def __init__(self, uri_obj=None, input_mode=True, pre_close_action=None, delete_tempfile=True):
         with NamedTemporaryFile(delete=False) as f:
             temp_name = f.name
 
@@ -165,16 +165,17 @@ class _TemporaryURIFileIO(FileIO):
         self.uri_obj = uri_obj
         self.temp_name = temp_name
         self.pre_close_action = pre_close_action
+        self.delete_tempfile = delete_tempfile
 
         super(_TemporaryURIFileIO, self).__init__(temp_name, 'rb' if input_mode else 'wb')
 
-        self.name = str(self.uri_obj)
+        self.name = str(self.uri_obj)  # must come after super __init__
     #end def
 
     def close(self):
         super(_TemporaryURIFileIO, self).close()
 
         if self.pre_close_action: self.pre_close_action(self.temp_name)
-        os.remove(self.temp_name)
+        if self.delete_tempfile: os.remove(self.temp_name)
     #end def
 #end class
