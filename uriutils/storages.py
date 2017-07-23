@@ -29,8 +29,10 @@ class URIBytesOutput(BytesIO):
     #end def
 
     def close(self):
-        self.uri_obj.put_content(self.getvalue())
-        super(URIBytesOutput, self).close()
+        if not self.closed:
+            self.uri_obj.put_content(self.getvalue())
+            super(URIBytesOutput, self).close()
+        #end if
     #end def
 
     @property
