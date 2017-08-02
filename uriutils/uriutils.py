@@ -1,7 +1,7 @@
 """
 This module provides wrapper function for transparently handling files regardless of location (local, cloud, etc).
 """
-__all__ = ['uri_open', 'uri_read', 'uri_dump', 'uri_exists', 'get_uri_metadata', 'uri_exists_wait', 'URIFileType', 'URIType', 'DirType']
+__all__ = ['uri_open', 'uri_read', 'uri_dump', 'uri_exists', 'get_uri_metadata', 'uri_exists_wait', 'URIFileType', 'URIType', 'URIDirType', 'get_uri_obj']
 
 # from contextlib import contextmanager
 import gzip
@@ -19,8 +19,23 @@ from .storages import STORAGES, URIBytesOutput
 logger = logging.getLogger(__name__)
 
 
+def get_uri_obj(uri, storage_args={}):
+    uri_obj = None
+    o = urlparse(uri)
+    for storage in STORAGES:
+        uri_obj = storage.parse_uri(o, storage_args=storage_args)
+        if uri_obj is not None:
+            break
+    #end for
+    if uri_obj is None:
+        raise TypeError('<{}> is an unsupported URI.'.format(uri))
+
+    return uri_obj
+#end def
+
+
 def uri_open(uri, mode='rb', auto_compress=True, in_memory=True, delete_tempfile=True, textio_args={}, storage_args={}):
-    uri_obj = _get_uri_obj(uri, storage_args)
+    uri_obj = get_uri_obj(uri, storage_args)
 
     if mode == 'rb': read_mode, binary_mode = True, True
     elif mode == 'r': read_mode, binary_mode = True, False
@@ -69,21 +84,6 @@ def uri_read(*args, **kwargs):
 #end def
 
 
-def _get_uri_obj(uri, storage_args={}):
-    uri_obj = None
-    o = urlparse(uri)
-    for storage in STORAGES:
-        uri_obj = storage.parse_uri(o, storage_args=storage_args)
-        if uri_obj is not None:
-            break
-    #end for
-    if uri_obj is None:
-        raise TypeError('<{}> is an unsupported URI.'.format(uri))
-
-    return uri_obj
-#end def
-
-
 def uri_dump(uri, content, mode='wb', **kwargs):
     with uri_open(uri, mode=mode, **kwargs) as f:
         f.write(content)
@@ -91,19 +91,19 @@ def uri_dump(uri, content, mode='wb', **kwargs):
 
 
 def get_uri_metadata(uri, storage_args={}):
-    uri_obj = _get_uri_obj(uri, storage_args)
+    uri_obj = get_uri_obj(uri, storage_args)
     return uri_obj.get_metadata()
 #end def
 
 
 def uri_exists(uri, storage_args={}):
-    uri_obj = _get_uri_obj(uri, storage_args)
+    uri_obj = get_uri_obj(uri, storage_args)
     return uri_obj.exists()
 #end def
 
 
 def uri_exists_wait(uri, timeout=300, interval=5, storage_args={}):
-    uri_obj = _get_uri_obj(uri, storage_args)
+    uri_obj = get_uri_obj(uri, storage_args)
     start_time = time.time()
     while time.time() - start_time < timeout:
         if uri_obj.exists(): return True
@@ -135,20 +135,24 @@ class URIType(object):
 #end class
 
 
-class DirType(object):
-    def __init__(self, mode='r', create=True):
-        self.mode = mode
+class URIDirType(object):
+    def __init__(self, create=False, storage_args={}):
         self.create = create
+        self.storage_args = storage_args
     #end def
 
     def __call__(self, uri):
-        if self.mode == 'r':
-            if not os.path.isdir(uri): raise OSError('<{}> is not a valid directory path.'.format(uri))
-        else:
-            if not os.path.isdir(uri):
-                os.makedirs(uri)
+        uri_obj = get_uri_obj(uri, self.storage_args)
+
+        if not uri_obj.dir_exists():
+            if self.create:
+                uri_obj.make_dir()
+                logger.info('Created directory <{}>.'.format(uri))
+            else:
+                raise OSError('<{}> is not a valid directory.'.format(uri))
         #end if
-        return uri
+
+        return uri_obj
     #end def
 #end class
 
