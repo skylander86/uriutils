@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='uriutils',
-    version='0.1.6',
+    version='0.1.7',
     description='Easily read and write to different storage platforms in Python.',
     long_description=open('README.rst', 'r').read(),
     classifiers=[
