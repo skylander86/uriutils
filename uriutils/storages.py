@@ -4,6 +4,9 @@ from io import BytesIO
 import os
 import shutil
 
+try: from urlparse import urlparse  # Python 2
+except ImportError: from urllib.parse import urlparse  # Python 3
+
 try:
     import boto3
     import botocore.exceptions
@@ -77,6 +80,19 @@ class BaseURI(object):
         """Check if the URI exists."""
         raise NotImplementedError('`exists` is not implemented for {}.'.format(type(self).__name__))
 
+    def dir_exists(self):
+        """Check if the URI exists as a directory."""
+        raise NotImplementedError('`dir_exists` is not implemented for {}.'.format(type(self).__name__))
+
+    def make_dir(self):
+        raise NotImplementedError('`make_dir` is not implemented for {}.'.format(type(self).__name__))
+
+    def list_dir(self):
+        raise NotImplementedError('`list_dir` is not implemented for {}.'.format(type(self).__name__))
+
+    def join(self, path):
+        return self.parse_uri(urlparse(os.path.join(str(self), path)), storage_args=self.storage_args)
+
     def __str__(self):
         """Returns a nicely formed URI for this object."""
         raise NotImplementedError('`__str__` is not implemented for {}.'.format(type(self).__name__))
@@ -124,6 +140,16 @@ class FileURI(BaseURI):
     def exists(self):
         return os.path.exists(self.filepath)
 
+    def dir_exists(self):
+        return os.path.isdir(self.filepath)
+
+    def make_dir(self):
+        os.makedirs(self.filepath)
+
+    def list_dir(self):
+        for fname in os.listdir(self.filepath):
+            yield os.path.join(self.filepath, fname)
+
     def __str__(self):
         return self.filepath
 #end class
@@ -136,7 +162,7 @@ class S3URI(BaseURI):
     @classmethod
     def parse_uri(cls, uri, storage_args={}):
         if uri.scheme not in cls.SUPPORTED_SCHEMES: return None
-        if s3_resource is None: raise ImportError('You need to install boto3 package to handle this {} URIs.'.format(uri.scheme))
+        if s3_resource is None: raise ImportError('You need to install boto3 package to handle {} URIs.'.format(uri.scheme))
 
         return S3URI(uri.netloc, uri.path.lstrip('/'), storage_args=storage_args)
     #end def
@@ -172,6 +198,19 @@ class S3URI(BaseURI):
         except botocore.exceptions.ClientError: return False
     #end def
 
+    def dir_exists(self): return True
+
+    def make_dir(self): pass
+
+    def list_dir(self):
+        bucket = self.s3_object.Bucket()
+        prefix = self.s3_object.key
+        if not prefix.endswith('/'): prefix += '/'
+
+        for obj in bucket.objects.filter(Delimiter='/', Prefix=prefix):
+            yield 's3://{}/{}'.format(obj.bucket_name, obj.key)
+    #end def
+
     def __str__(self):
         return 's3://{}/{}'.format(self.s3_object.bucket_name, self.s3_object.key)
 #end class
@@ -184,7 +223,7 @@ class GoogleCloudStorageURI(BaseURI):
     @classmethod
     def parse_uri(cls, uri, storage_args={}):
         if uri.scheme not in cls.SUPPORTED_SCHEMES: return None
-        if gs_client is None: raise ImportError('You need to install google-cloud-storage package to handle this {} URIs.'.format(uri.scheme))
+        if gs_client is None: raise ImportError('You need to install google-cloud-storage package to handle {} URIs.'.format(uri.scheme))
 
         return GoogleCloudStorageURI(uri.netloc, uri.path.lstrip('/'), storage_args=storage_args)
     #end def
@@ -227,6 +266,19 @@ class GoogleCloudStorageURI(BaseURI):
         except google.cloud.exceptions.NotFound: return False
     #end def
 
+    def dir_exists(self): return True
+
+    def make_dir(self): pass
+
+    def list_dir(self):
+        bucket = self.blob.bucket
+        prefix = self.blob.name
+        if not prefix.endswith('/'): prefix += '/'
+
+        for blob in bucket.list_blobs(prefix=prefix, delimiter='/'):
+            yield 'gs://{}/{}'.format(blob.bucket.name, blob.name)
+    #end def
+
     def __str__(self):
         return 'gs://{}/{}'.format(self.blob.bucket.name, self.blob.name)
 #end class
@@ -239,7 +291,7 @@ class HTTPURI(BaseURI):
     @classmethod
     def parse_uri(cls, uri, storage_args={}):
         if uri.scheme not in cls.SUPPORTED_SCHEMES: return None
-        if requests is None: raise ImportError('You need to install requests package to handle this {} URIs.'.format(uri.scheme))
+        if requests is None: raise ImportError('You need to install requests package to handle {} URIs.'.format(uri.scheme))
 
         return HTTPURI(uri.geturl(), storage_args=storage_args)
     #end def
@@ -278,6 +330,10 @@ class HTTPURI(BaseURI):
             return True
         except requests.HTTPError: return False
     #end def
+
+    def dir_exists(self): return True
+
+    def make_dir(self): pass
 
     def __str__(self):
         return self.url
