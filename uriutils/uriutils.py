@@ -88,6 +88,8 @@ def uri_read(*args, **kwargs):
 def uri_dump(uri, content, mode='wb', **kwargs):
     with uri_open(uri, mode=mode, **kwargs) as f:
         f.write(content)
+        f.flush()
+    #end with
 #end def
 
 
