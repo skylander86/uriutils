@@ -21,9 +21,8 @@ logger = logging.getLogger(__name__)
 
 
 def get_uri_obj(uri, storage_args={}):
+    if isinstance(uri, BaseURI): return uri
     uri_obj = None
-    if isinstance(uri, BaseURI):
-        return uri
 
     o = urlparse(uri)
     for storage in STORAGES:
@@ -39,6 +38,7 @@ def get_uri_obj(uri, storage_args={}):
 
 
 def uri_open(uri, mode='rb', auto_compress=True, in_memory=True, delete_tempfile=True, textio_args={}, storage_args={}):
+    if isinstance(uri, BaseURI): uri = str(uri)
     uri_obj = get_uri_obj(uri, storage_args)
 
     if mode == 'rb': read_mode, binary_mode = True, True
