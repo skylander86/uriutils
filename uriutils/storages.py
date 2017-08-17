@@ -10,15 +10,12 @@ except ImportError: from urllib.parse import urlparse  # Python 3
 try:
     import boto3
     import botocore.exceptions
-    s3_resource = boto3.resource('s3')
-    sns = boto3.resource('sns')
-except ImportError: s3_resource = None
+except ImportError: boto3 = None
 
 try:
     from google.cloud import storage as gcloud_storage
     import google.cloud.exceptions
-    gs_client = gcloud_storage.Client()
-except ImportError: gs_client = None
+except ImportError: gcloud_storage = None
 
 try: import requests
 except ImportError: requests = None
@@ -160,10 +157,14 @@ class S3URI(BaseURI):
     SUPPORTED_SCHEMES = set(['s3'])
     VALID_STORAGE_ARGS = ['CacheControl', 'ContentDisposition', 'ContentEncoding', 'ContentLanguage', 'ContentLength', 'ContentMD5', 'ContentType', 'Expires', 'GrantFullControl', 'GrantRead', 'GrantReadACP', 'GrantWriteACP', 'Metadata', 'ServerSideEncryption', 'StorageClass', 'WebsiteRedirectLocation', 'SSECustomerAlgorithm', 'SSECustomerKey', 'SSEKMSKeyId', 'RequestPayer', 'Tagging']
 
+    s3_resource = None
+
     @classmethod
     def parse_uri(cls, uri, storage_args={}):
         if uri.scheme not in cls.SUPPORTED_SCHEMES: return None
-        if s3_resource is None: raise ImportError('You need to install boto3 package to handle {} URIs.'.format(uri.scheme))
+        if boto3 is None: raise ImportError('You need to install boto3 package to handle {} URIs.'.format(uri.scheme))
+
+        if cls.s3_resource is None: cls.s3_resource = boto3.resource('s3')
 
         return S3URI(uri.netloc, uri.path.lstrip('/'), storage_args=storage_args)
     #end def
@@ -171,7 +172,7 @@ class S3URI(BaseURI):
     def __init__(self, bucket, key, storage_args={}):
         super(S3URI, self).__init__(storage_args=storage_args)
 
-        self.s3_object = s3_resource.Object(bucket, key)
+        self.s3_object = self.s3_resource.Object(bucket, key)
     #end def
 
     def get_content(self):
@@ -221,10 +222,14 @@ class GoogleCloudStorageURI(BaseURI):
     SUPPORTED_SCHEMES = set(['gs', 'gcs'])
     VALID_STORAGE_ARGS = ['chunk_size', 'encryption_key']
 
+    gs_client = None
+
     @classmethod
     def parse_uri(cls, uri, storage_args={}):
         if uri.scheme not in cls.SUPPORTED_SCHEMES: return None
-        if gs_client is None: raise ImportError('You need to install google-cloud-storage package to handle {} URIs.'.format(uri.scheme))
+        if gcloud_storage is None: raise ImportError('You need to install google-cloud-storage package to handle {} URIs.'.format(uri.scheme))
+
+        if cls.gs_client is None: cls.gs_client = gcloud_storage.Client()
 
         return GoogleCloudStorageURI(uri.netloc, uri.path.lstrip('/'), storage_args=storage_args)
     #end def
@@ -237,7 +242,7 @@ class GoogleCloudStorageURI(BaseURI):
 
         super(GoogleCloudStorageURI, self).__init__(storage_args=storage_args)
 
-        self.blob = gs_client.bucket(bucket).blob(key, **self.storage_args)
+        self.blob = self.gs_client.bucket(bucket).blob(key, **self.storage_args)
     #end def
 
     def get_content(self):
@@ -291,6 +296,8 @@ class HTTPURI(BaseURI):
 
     @classmethod
     def parse_uri(cls, uri, storage_args={}):
+        global requests
+
         if uri.scheme not in cls.SUPPORTED_SCHEMES: return None
         if requests is None: raise ImportError('You need to install requests package to handle {} URIs.'.format(uri.scheme))
 
@@ -345,10 +352,14 @@ class SNSURI(BaseURI):
     SUPPORTED_SCHEMES = set(['sns'])
     VALID_STORAGE_ARGS = ['Subject', 'MessageAttributes', 'MessageStructure']
 
+    sns_resource = None
+
     @classmethod
     def parse_uri(cls, uri, storage_args={}):
         if uri.scheme not in cls.SUPPORTED_SCHEMES: return None
         if boto3 is None: raise ImportError('You need to install boto3 package to handle {} URIs.'.format(uri.scheme))
+
+        if cls.sns_resource is None: cls.sns_resource = boto3.resource('sns')
 
         return SNSURI(uri.netloc, uri.path, storage_args=storage_args)
     #end def
@@ -363,10 +374,10 @@ class SNSURI(BaseURI):
         topic = None
 
         if topic_name.startswith('arn:'):
-            topic = sns.Topic(topic_name)
+            topic = self.sns_resource.Topic(topic_name)
         else:
             account_id = boto3.client('sts').get_caller_identity().get('Account')
-            topic = sns.Topic('arn:aws:sns:{}:{}:{}'.format(region, account_id, topic_name))
+            topic = self.sns_resource.Topic('arn:aws:sns:{}:{}:{}'.format(region, account_id, topic_name))
         #end if
 
         self.topic = topic
