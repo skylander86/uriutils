@@ -4,6 +4,7 @@ This module provides wrapper function for transparently handling files regardles
 __all__ = ['uri_open', 'uri_read', 'uri_dump', 'uri_exists', 'get_uri_metadata', 'uri_exists_wait', 'URIFileType', 'URIType', 'URIDirType', 'get_uri_obj']
 
 # from contextlib import contextmanager
+import atexit
 import gzip
 from io import BytesIO, TextIOWrapper, FileIO
 import logging
@@ -90,6 +91,8 @@ def uri_read(*args, **kwargs):
 def uri_dump(uri, content, mode='wb', **kwargs):
     with uri_open(uri, mode=mode, **kwargs) as f:
         f.write(content)
+        f.flush()
+    #end with
 #end def
 
 
@@ -126,7 +129,10 @@ class URIFileType(object):
     #end def
 
     def __call__(self, uri):
-        return uri_open(uri, **self.kwargs)
+        f = uri_open(uri, **self.kwargs)
+        atexit.register(lambda: f.close())
+        return f
+    #end def
 #end class
 
 
@@ -180,9 +186,11 @@ class _TemporaryURIFileIO(FileIO):
     #end def
 
     def close(self):
-        super(_TemporaryURIFileIO, self).close()
+        if not self.closed:
+            super(_TemporaryURIFileIO, self).close()
 
-        if self.pre_close_action: self.pre_close_action(self.temp_name)
-        if self.delete_tempfile: os.remove(self.temp_name)
+            if self.pre_close_action: self.pre_close_action(self.temp_name)
+            if self.delete_tempfile: os.remove(self.temp_name)
+        #end if
     #end def
 #end class

@@ -11,6 +11,7 @@ try:
     import boto3
     import botocore.exceptions
     s3_resource = boto3.resource('s3')
+    sns = boto3.resource('sns')
 except ImportError: s3_resource = None
 
 try:
@@ -32,8 +33,10 @@ class URIBytesOutput(BytesIO):
     #end def
 
     def close(self):
-        self.uri_obj.put_content(self.getvalue())
-        super(URIBytesOutput, self).close()
+        if not self.closed:
+            self.uri_obj.put_content(self.getvalue())
+            super(URIBytesOutput, self).close()
+        #end if
     #end def
 
     @property
@@ -284,7 +287,7 @@ class GoogleCloudStorageURI(BaseURI):
 
 class HTTPURI(BaseURI):
     SUPPORTED_SCHEMES = set(['http', 'https'])
-    VALID_STORAGE_ARGS = ['params', 'headers', 'cookies', 'auth', 'timeout', 'allow_redirects', 'proxies', 'verify', 'stream', 'cert']
+    VALID_STORAGE_ARGS = ['params', 'headers', 'cookies', 'auth', 'timeout', 'allow_redirects', 'proxies', 'verify', 'stream', 'cert', 'method']
 
     @classmethod
     def parse_uri(cls, uri, storage_args={}):
@@ -338,4 +341,64 @@ class HTTPURI(BaseURI):
 #end class
 
 
-STORAGES = [FileURI, S3URI, GoogleCloudStorageURI, HTTPURI]
+class SNSURI(BaseURI):
+    SUPPORTED_SCHEMES = set(['sns'])
+    VALID_STORAGE_ARGS = ['Subject', 'MessageAttributes', 'MessageStructure']
+
+    @classmethod
+    def parse_uri(cls, uri, storage_args={}):
+        if uri.scheme not in cls.SUPPORTED_SCHEMES: return None
+        if boto3 is None: raise ImportError('You need to install boto3 package to handle {} URIs.'.format(uri.scheme))
+
+        return SNSURI(uri.netloc, uri.path, storage_args=storage_args)
+    #end def
+
+    def __init__(self, topic_name, region, storage_args={}):
+        super(SNSURI, self).__init__(storage_args=storage_args)
+
+        region = region.lstrip('/')
+        if not region:
+            region = boto3.session.Session().region_name
+
+        topic = None
+
+        if topic_name.startswith('arn:'):
+            topic = sns.Topic(topic_name)
+        else:
+            account_id = boto3.client('sts').get_caller_identity().get('Account')
+            topic = sns.Topic('arn:aws:sns:{}:{}:{}'.format(region, account_id, topic_name))
+        #end if
+
+        self.topic = topic
+    #end def
+
+    def get_content(self):
+        raise TypeError('SNSURI does not support reading.')
+    #end def
+
+    def put_content(self, content):
+        self.topic.publish(Message=content, **self.storage_args)
+
+    def download_file(self, filename):
+        raise TypeError('SNSURI does not support reading.')
+    #end def
+
+    def upload_file(self, filename):
+        with open(filename, 'rb') as f:
+            self.topic.publish(Message=f.read(), **self.storage_args)
+    #end def
+
+    def exists(self):
+        return self.topic.arn is not None
+    #end def
+
+    def dir_exists(self): return True
+
+    def make_dir(self): pass
+
+    def __str__(self):
+        return self.topic.arn
+#end class
+
+
+STORAGES = [FileURI, S3URI, GoogleCloudStorageURI, HTTPURI, SNSURI]
