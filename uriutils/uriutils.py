@@ -14,13 +14,16 @@ import time
 try: from urlparse import urlparse  # Python 2
 except ImportError: from urllib.parse import urlparse  # Python 3
 
-from .storages import STORAGES, URIBytesOutput
+from .storages import STORAGES, URIBytesOutput, BaseURI
 
 logger = logging.getLogger(__name__)
 
 
 def get_uri_obj(uri, storage_args={}):
     uri_obj = None
+    if isinstance(uri, BaseURI):
+        return uri
+
     o = urlparse(uri)
     for storage in STORAGES:
         uri_obj = storage.parse_uri(o, storage_args=storage_args)

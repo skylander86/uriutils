@@ -1,4 +1,4 @@
-__all__ = ['STORAGES', 'URIBytesOutput']
+__all__ = ['STORAGES', 'URIBytesOutput', 'BaseURI']
 
 from io import BytesIO
 import os
