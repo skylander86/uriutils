@@ -308,20 +308,25 @@ class HTTPURI(BaseURI):
         super(HTTPURI, self).__init__(storage_args=storage_args)
         self.url = url
         self.method = self.storage_args.pop('method', None)
+        self.raise_for_status = self.storage_args.pop('raise_for_status', True)
     #end def
 
     def get_content(self):
         r = requests.request(self.method if self.method else 'GET', self.url, **self.storage_args)
+        if self.raise_for_status: r.raise_for_status()
         return r.content
     #end def
 
     def put_content(self, content):
-        requests.request(self.method if self.method else 'PUT', self.url, data=content, **self.storage_args)
+        r = requests.request(self.method if self.method else 'PUT', self.url, data=content, **self.storage_args)
+        if self.raise_for_status: r.raise_for_status()
+    #end def
 
     def download_file(self, filename):
         kwargs = self.storage_args.copy()
         stream = kwargs.pop('stream', True)
         r = requests.request(self.method if self.method else 'GET', self.url, stream=stream, **kwargs)
+        if self.raise_for_status: r.raise_for_status()
         with open(filename, 'wb') as f:
             for chunk in r.iter_content(chunk_size=1024):
                 f.write(chunk)
@@ -329,7 +334,8 @@ class HTTPURI(BaseURI):
 
     def upload_file(self, filename):
         with open(filename, 'rb') as f:
-            requests.request(self.method if self.method else 'PUT', self.url, data=f, **self.storage_args)
+            r = requests.request(self.method if self.method else 'PUT', self.url, data=f, **self.storage_args)
+        if self.raise_for_status: r.raise_for_status()
     #end def
 
     def exists(self):
