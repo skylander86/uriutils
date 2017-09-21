@@ -394,7 +394,11 @@ class SNSURI(BaseURI):
     #end def
 
     def put_content(self, content):
+        if not isinstance(content, str):
+            content = content.decode('utf-8')
+
         self.topic.publish(Message=content, **self.storage_args)
+    #end def
 
     def download_file(self, filename):
         raise TypeError('SNSURI does not support reading.')
