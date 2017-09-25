@@ -5,8 +5,8 @@
 SPHINXOPTS    =
 SPHINXBUILD   = python -msphinx
 SPHINXPROJ    = uriutils
-SOURCEDIR     = docs
-BUILDDIR      = docs/_build
+SOURCEDIR     = sphinx
+BUILDDIR      = .
 
 # Put it first so that "make" without argument is like "make help".
 help:

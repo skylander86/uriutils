@@ -1,7 +1,6 @@
 API Documentation
 =================
 
-.. __all__ = ['uri_open', 'uri_read', 'uri_dump', 'uri_exists', 'get_uri_metadata', 'uri_exists_wait', 'get_uri_obj', 'URIFileType', 'URIType', 'URIDirType']
 Read / Write functions
 ----------------------
 
@@ -19,6 +18,6 @@ URI information
 Argument Parser types
 ---------------------
 
-.. autofunction:: uriutils.uriutils.URIType
-.. autofunction:: uriutils.uriutils.URIFileType
-.. autofunction:: uriutils.uriutils.URIDirType
+.. autoclass:: uriutils.uriutils.URIType
+.. autoclass:: uriutils.uriutils.URIFileType
+.. autoclass:: uriutils.uriutils.URIDirType

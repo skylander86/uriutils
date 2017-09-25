@@ -1,0 +1,397 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>uriutils.uriutils &#8212; uriutils 0.1.13 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1.13',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for uriutils.uriutils</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This module contains functions for opening and handling URIs as if they are normal files.</span>
+<span class="sd">It also provides convenience functions for quick one liners and :mod:`argparse` types.</span>
+
+<span class="sd">* `Convenience functions &lt;#uriutils.uriutils.uri_open&gt;`_</span>
+<span class="sd">* `Argument parser types &lt;#uriutils.uriutils.URIFileType&gt;`_</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;uri_open&#39;</span><span class="p">,</span> <span class="s1">&#39;uri_read&#39;</span><span class="p">,</span> <span class="s1">&#39;uri_dump&#39;</span><span class="p">,</span> <span class="s1">&#39;uri_exists&#39;</span><span class="p">,</span> <span class="s1">&#39;uri_exists_wait&#39;</span><span class="p">,</span> <span class="s1">&#39;get_uri_metadata&#39;</span><span class="p">,</span> <span class="s1">&#39;get_uri_obj&#39;</span><span class="p">,</span> <span class="s1">&#39;URIFileType&#39;</span><span class="p">,</span> <span class="s1">&#39;URIType&#39;</span><span class="p">,</span> <span class="s1">&#39;URIDirType&#39;</span><span class="p">]</span>
+
+<span class="c1"># from contextlib import contextmanager</span>
+<span class="kn">import</span> <span class="nn">atexit</span>
+<span class="kn">import</span> <span class="nn">gzip</span>
+<span class="kn">from</span> <span class="nn">io</span> <span class="k">import</span> <span class="n">BytesIO</span><span class="p">,</span> <span class="n">TextIOWrapper</span><span class="p">,</span> <span class="n">FileIO</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">tempfile</span> <span class="k">import</span> <span class="n">NamedTemporaryFile</span>
+<span class="kn">import</span> <span class="nn">time</span>
+
+<span class="k">try</span><span class="p">:</span> <span class="kn">from</span> <span class="nn">urlparse</span> <span class="k">import</span> <span class="n">urlparse</span>  <span class="c1"># Python 2</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span> <span class="kn">from</span> <span class="nn">urllib.parse</span> <span class="k">import</span> <span class="n">urlparse</span>  <span class="c1"># Python 3</span>
+
+<span class="kn">from</span> <span class="nn">.storages</span> <span class="k">import</span> <span class="n">STORAGES</span><span class="p">,</span> <span class="n">URIBytesOutput</span><span class="p">,</span> <span class="n">BaseURI</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="get_uri_obj"><a class="viewcode-back" href="../../api.html#uriutils.uriutils.get_uri_obj">[docs]</a><span class="k">def</span> <span class="nf">get_uri_obj</span><span class="p">(</span><span class="n">uri</span><span class="p">,</span> <span class="n">storage_args</span><span class="o">=</span><span class="p">{}):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Retrieve the underlying storage object based on the URI (i.e., scheme).</span>
+
+<span class="sd">    :param str uri: URI to get storage object for</span>
+<span class="sd">    :param dict storage_args: Keyword arguments to pass to the underlying storage object</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">uri</span><span class="p">,</span> <span class="n">BaseURI</span><span class="p">):</span> <span class="k">return</span> <span class="n">uri</span>
+    <span class="n">uri_obj</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="n">o</span> <span class="o">=</span> <span class="n">urlparse</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">storage</span> <span class="ow">in</span> <span class="n">STORAGES</span><span class="p">:</span>
+        <span class="n">uri_obj</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">parse_uri</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">storage_args</span><span class="o">=</span><span class="n">storage_args</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">uri_obj</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">break</span>
+    <span class="c1">#end for</span>
+    <span class="k">if</span> <span class="n">uri_obj</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;&lt;</span><span class="si">{}</span><span class="s1">&gt; is an unsupported URI.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">uri</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">uri_obj</span></div>
+<span class="c1">#end def</span>
+
+
+<div class="viewcode-block" id="uri_open"><a class="viewcode-back" href="../../api.html#uriutils.uriutils.uri_open">[docs]</a><span class="k">def</span> <span class="nf">uri_open</span><span class="p">(</span><span class="n">uri</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;rb&#39;</span><span class="p">,</span> <span class="n">auto_compress</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">in_memory</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">delete_tempfile</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">textio_args</span><span class="o">=</span><span class="p">{},</span> <span class="n">storage_args</span><span class="o">=</span><span class="p">{}):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Opens a URI for reading / writing.</span>
+<span class="sd">    Analogous to the :func:`open` function.</span>
+<span class="sd">    This method supports ``with`` context handling::</span>
+
+<span class="sd">        with uri_open(&#39;http://www.example.com&#39;, mode=&#39;r&#39;) as f:</span>
+<span class="sd">            print(f.read())</span>
+
+<span class="sd">    :param str uri: URI of file to open</span>
+<span class="sd">    :param str mode: Either ``rb``, ``r``, ``w``, or ``wb`` for read/write modes in binary/text respectiely</span>
+<span class="sd">    :param bool auto_compress: Whether to automatically use the :mod:`gzip` module with ``.gz`` URIsF</span>
+<span class="sd">    :param bool in_memory: Whether to store entire file in memory or in a local temporary file</span>
+<span class="sd">    :param bool delete_tempfile: When :attr:`in_memory` is ``False``, whether to delete the temporary file on close</span>
+<span class="sd">    :param dict textio_args: Keyword arguments to pass to :class:`io.TextIOWrapper` for text read/write mode</span>
+<span class="sd">    :param dict storage_args: Keyword arguments to pass to the underlying storage object</span>
+
+<span class="sd">    :returns: file-like object to URI</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">uri</span><span class="p">,</span> <span class="n">BaseURI</span><span class="p">):</span> <span class="n">uri</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span>
+    <span class="n">uri_obj</span> <span class="o">=</span> <span class="n">get_uri_obj</span><span class="p">(</span><span class="n">uri</span><span class="p">,</span> <span class="n">storage_args</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s1">&#39;rb&#39;</span><span class="p">:</span> <span class="n">read_mode</span><span class="p">,</span> <span class="n">binary_mode</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="kc">True</span>
+    <span class="k">elif</span> <span class="n">mode</span> <span class="o">==</span> <span class="s1">&#39;r&#39;</span><span class="p">:</span> <span class="n">read_mode</span><span class="p">,</span> <span class="n">binary_mode</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="kc">False</span>
+    <span class="k">elif</span> <span class="n">mode</span> <span class="o">==</span> <span class="s1">&#39;w&#39;</span><span class="p">:</span> <span class="n">read_mode</span><span class="p">,</span> <span class="n">binary_mode</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="kc">False</span>
+    <span class="k">elif</span> <span class="n">mode</span> <span class="o">==</span> <span class="s1">&#39;wb&#39;</span><span class="p">:</span> <span class="n">read_mode</span><span class="p">,</span> <span class="n">binary_mode</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="kc">True</span>
+    <span class="k">else</span><span class="p">:</span> <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;`mode` cannot be &quot;</span><span class="si">{}</span><span class="s1">&quot;.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">mode</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">read_mode</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">in_memory</span><span class="p">:</span>
+            <span class="n">file_obj</span> <span class="o">=</span> <span class="n">BytesIO</span><span class="p">(</span><span class="n">uri_obj</span><span class="o">.</span><span class="n">get_content</span><span class="p">())</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="n">file_obj</span><span class="p">,</span> <span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">uri_obj</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">file_obj</span> <span class="o">=</span> <span class="n">_TemporaryURIFileIO</span><span class="p">(</span><span class="n">uri_obj</span><span class="o">=</span><span class="n">uri_obj</span><span class="p">,</span> <span class="n">input_mode</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">delete_tempfile</span><span class="o">=</span><span class="n">delete_tempfile</span><span class="p">)</span>
+        <span class="c1">#end if</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">in_memory</span><span class="p">:</span> <span class="n">file_obj</span> <span class="o">=</span> <span class="n">URIBytesOutput</span><span class="p">(</span><span class="n">uri_obj</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">file_obj</span> <span class="o">=</span> <span class="n">_TemporaryURIFileIO</span><span class="p">(</span><span class="n">uri_obj</span><span class="o">=</span><span class="n">uri_obj</span><span class="p">,</span> <span class="n">input_mode</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">pre_close_action</span><span class="o">=</span><span class="n">uri_obj</span><span class="o">.</span><span class="n">upload_file</span><span class="p">,</span> <span class="n">delete_tempfile</span><span class="o">=</span><span class="n">delete_tempfile</span><span class="p">)</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="n">file_obj</span><span class="p">,</span> <span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">uri_obj</span><span class="p">))</span>
+        <span class="c1">#end if</span>
+    <span class="c1">#end if</span>
+
+    <span class="n">temp_name</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">file_obj</span><span class="p">,</span> <span class="s1">&#39;temp_name&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">auto_compress</span><span class="p">:</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">ext</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span>
+        <span class="n">ext</span> <span class="o">=</span> <span class="n">ext</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">ext</span> <span class="o">==</span> <span class="s1">&#39;.gz&#39;</span><span class="p">:</span> <span class="n">file_obj</span> <span class="o">=</span> <span class="n">gzip</span><span class="o">.</span><span class="n">GzipFile</span><span class="p">(</span><span class="n">fileobj</span><span class="o">=</span><span class="n">file_obj</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;rb&#39;</span> <span class="k">if</span> <span class="n">read_mode</span> <span class="k">else</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span>
+    <span class="c1">#end if</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">binary_mode</span><span class="p">:</span>
+        <span class="n">textio_args</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s1">&#39;encoding&#39;</span><span class="p">,</span> <span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+        <span class="n">file_obj</span> <span class="o">=</span> <span class="n">TextIOWrapper</span><span class="p">(</span><span class="n">file_obj</span><span class="p">,</span> <span class="o">**</span><span class="n">textio_args</span><span class="p">)</span>
+    <span class="c1">#end if</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">file_obj</span><span class="p">,</span> <span class="s1">&#39;temp_name&#39;</span><span class="p">):</span> <span class="nb">setattr</span><span class="p">(</span><span class="n">file_obj</span><span class="p">,</span> <span class="s1">&#39;temp_name&#39;</span><span class="p">,</span> <span class="n">temp_name</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">file_obj</span></div>
+<span class="c1">#end def</span>
+
+
+<div class="viewcode-block" id="uri_read"><a class="viewcode-back" href="../../api.html#uriutils.uriutils.uri_read">[docs]</a><span class="k">def</span> <span class="nf">uri_read</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Reads the contents of a URI into a string or bytestring.</span>
+<span class="sd">    See :func:`uri_open` for complete description of keyword parameters.</span>
+
+<span class="sd">    :returns: Contents of URI</span>
+<span class="sd">    :rtype: str, bytes</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">with</span> <span class="n">uri_open</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">content</span></div>
+<span class="c1">#end def</span>
+
+
+<div class="viewcode-block" id="uri_dump"><a class="viewcode-back" href="../../api.html#uriutils.uriutils.uri_dump">[docs]</a><span class="k">def</span> <span class="nf">uri_dump</span><span class="p">(</span><span class="n">uri</span><span class="p">,</span> <span class="n">content</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;wb&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Dumps the contents of a string/bytestring into a URI.</span>
+<span class="sd">    See :func:`uri_open` for complete description of keyword parameters.</span>
+
+<span class="sd">    :param str uri: URI to dump contents to</span>
+<span class="sd">    :param str content: Contents to write to URI</span>
+<span class="sd">    :param str mode: Either ``w``, or ``wb`` to write binary/text content respectiely</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="s1">&#39;r&#39;</span> <span class="ow">in</span> <span class="n">mode</span><span class="p">:</span> <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Read mode is not allowed for `uri_dump`.&#39;</span><span class="p">)</span>
+
+    <span class="k">with</span> <span class="n">uri_open</span><span class="p">(</span><span class="n">uri</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="n">mode</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span></div>
+    <span class="c1">#end with</span>
+<span class="c1">#end def</span>
+
+
+<div class="viewcode-block" id="get_uri_metadata"><a class="viewcode-back" href="../../api.html#uriutils.uriutils.get_uri_metadata">[docs]</a><span class="k">def</span> <span class="nf">get_uri_metadata</span><span class="p">(</span><span class="n">uri</span><span class="p">,</span> <span class="n">storage_args</span><span class="o">=</span><span class="p">{}):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get the &quot;metadata&quot; from URI.</span>
+<span class="sd">    This is most commonly used with bucket storage on the Cloud such as S3 and Google Cloud.</span>
+
+<span class="sd">    :param str uri: URI to get metadata for</span>
+<span class="sd">    :param dict storage_args: Keyword arguments to pass to the underlying storage object</span>
+<span class="sd">    :returns: Metadata associated with URI</span>
+<span class="sd">    :rtype: dict</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">uri_obj</span> <span class="o">=</span> <span class="n">get_uri_obj</span><span class="p">(</span><span class="n">uri</span><span class="p">,</span> <span class="n">storage_args</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">uri_obj</span><span class="o">.</span><span class="n">get_metadata</span><span class="p">()</span></div>
+<span class="c1">#end def</span>
+
+
+<div class="viewcode-block" id="uri_exists"><a class="viewcode-back" href="../../api.html#uriutils.uriutils.uri_exists">[docs]</a><span class="k">def</span> <span class="nf">uri_exists</span><span class="p">(</span><span class="n">uri</span><span class="p">,</span> <span class="n">storage_args</span><span class="o">=</span><span class="p">{}):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Check if URI exists.</span>
+
+<span class="sd">    :param str uri: URI to check existence</span>
+<span class="sd">    :param dict storage_args: Keyword arguments to pass to the underlying storage object</span>
+<span class="sd">    :returns: ``True`` if URI exists</span>
+<span class="sd">    :rtype: bool</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">uri_obj</span> <span class="o">=</span> <span class="n">get_uri_obj</span><span class="p">(</span><span class="n">uri</span><span class="p">,</span> <span class="n">storage_args</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">uri_obj</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span></div>
+<span class="c1">#end def</span>
+
+
+<div class="viewcode-block" id="uri_exists_wait"><a class="viewcode-back" href="../../api.html#uriutils.uriutils.uri_exists_wait">[docs]</a><span class="k">def</span> <span class="nf">uri_exists_wait</span><span class="p">(</span><span class="n">uri</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span> <span class="n">interval</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">storage_args</span><span class="o">=</span><span class="p">{}):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Block / waits until URI exists.</span>
+
+<span class="sd">    :param str uri: URI to check existence</span>
+<span class="sd">    :param float timeout: Number of seconds before timing out</span>
+<span class="sd">    :param float interval: Calls :func:`uri_exists` every ``interval`` seconds</span>
+<span class="sd">    :param dict storage_args: Keyword arguments to pass to the underlying storage object</span>
+<span class="sd">    :returns: ``True`` if URI exists</span>
+<span class="sd">    :rtype: bool</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">uri_obj</span> <span class="o">=</span> <span class="n">get_uri_obj</span><span class="p">(</span><span class="n">uri</span><span class="p">,</span> <span class="n">storage_args</span><span class="p">)</span>
+    <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="k">while</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span> <span class="o">&lt;</span> <span class="n">timeout</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">uri_obj</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span> <span class="k">return</span> <span class="kc">True</span>
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">interval</span><span class="p">)</span>
+    <span class="c1">#end while</span>
+
+    <span class="k">if</span> <span class="n">uri_exists</span><span class="p">(</span><span class="n">uri</span><span class="p">):</span> <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="k">return</span> <span class="kc">False</span></div>
+<span class="c1">#end def</span>
+
+
+<div class="viewcode-block" id="URIFileType"><a class="viewcode-back" href="../../api.html#uriutils.uriutils.URIFileType">[docs]</a><span class="k">class</span> <span class="nc">URIFileType</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A convenience class that can be used as the ``type`` argument to :meth:`argparse.ArgumentParser.add_argument`.</span>
+<span class="sd">    It will return a file-like object using :func:`uri_open`.</span>
+
+<span class="sd">    See :func:`uri_open` for complete description of keyword parameters.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;rb&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span> <span class="o">=</span> <span class="n">kwargs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;mode&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">mode</span>
+    <span class="c1">#end def</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">uri</span><span class="p">):</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="n">uri_open</span><span class="p">(</span><span class="n">uri</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">atexit</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">())</span>
+        <span class="k">return</span> <span class="n">f</span></div>
+    <span class="c1">#end def</span>
+<span class="c1">#end class</span>
+
+
+<div class="viewcode-block" id="URIType"><a class="viewcode-back" href="../../api.html#uriutils.uriutils.URIType">[docs]</a><span class="k">class</span> <span class="nc">URIType</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A convenience class that can be used as the ``type`` argument to :meth:`argparse.ArgumentParser.add_argument`.</span>
+<span class="sd">    It will return the result of :func:`urllib.parse.urlparse`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">uri</span><span class="p">):</span>
+        <span class="n">o</span> <span class="o">=</span> <span class="n">urlparse</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">o</span></div>
+    <span class="c1">#end def</span>
+<span class="c1">#end class</span>
+
+
+<div class="viewcode-block" id="URIDirType"><a class="viewcode-back" href="../../api.html#uriutils.uriutils.URIDirType">[docs]</a><span class="k">class</span> <span class="nc">URIDirType</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A convenience class that can be used as the ``type`` argument to :meth:`argparse.ArgumentParser.add_argument`.</span>
+<span class="sd">    It will return the result of :func:`urllib.parse.urlparse`.</span>
+
+<span class="sd">    :param bool create: Whether to create directory (and thus &quot;ensure&quot; that directory exists)</span>
+<span class="sd">    :param dict storage_args: Keyword arguments to pass to the underlying storage object</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">create</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">storage_args</span><span class="o">=</span><span class="p">{}):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">create</span> <span class="o">=</span> <span class="n">create</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">storage_args</span> <span class="o">=</span> <span class="n">storage_args</span>
+    <span class="c1">#end def</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">uri</span><span class="p">):</span>
+        <span class="n">uri_obj</span> <span class="o">=</span> <span class="n">get_uri_obj</span><span class="p">(</span><span class="n">uri</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">storage_args</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">uri_obj</span><span class="o">.</span><span class="n">dir_exists</span><span class="p">():</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">create</span><span class="p">:</span>
+                <span class="n">uri_obj</span><span class="o">.</span><span class="n">make_dir</span><span class="p">()</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Created directory &lt;</span><span class="si">{}</span><span class="s1">&gt;.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">uri</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="s1">&#39;&lt;</span><span class="si">{}</span><span class="s1">&gt; is not a valid directory.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">uri</span><span class="p">))</span>
+        <span class="c1">#end if</span>
+
+        <span class="k">return</span> <span class="n">uri_obj</span></div>
+    <span class="c1">#end def</span>
+<span class="c1">#end class</span>
+
+
+<span class="k">class</span> <span class="nc">_TemporaryURIFileIO</span><span class="p">(</span><span class="n">FileIO</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">uri_obj</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">input_mode</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">pre_close_action</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">delete_tempfile</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="k">with</span> <span class="n">NamedTemporaryFile</span><span class="p">(</span><span class="n">delete</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">temp_name</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">name</span>
+
+        <span class="k">if</span> <span class="n">input_mode</span> <span class="ow">and</span> <span class="n">uri_obj</span><span class="p">:</span>
+            <span class="n">uri_obj</span><span class="o">.</span><span class="n">download_file</span><span class="p">(</span><span class="n">temp_name</span><span class="p">)</span>
+        <span class="c1">#end if</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">uri_obj</span> <span class="o">=</span> <span class="n">uri_obj</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">temp_name</span> <span class="o">=</span> <span class="n">temp_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pre_close_action</span> <span class="o">=</span> <span class="n">pre_close_action</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">delete_tempfile</span> <span class="o">=</span> <span class="n">delete_tempfile</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">_TemporaryURIFileIO</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">temp_name</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span> <span class="k">if</span> <span class="n">input_mode</span> <span class="k">else</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">uri_obj</span><span class="p">)</span>  <span class="c1"># must come after super __init__</span>
+    <span class="c1">#end def</span>
+
+    <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">closed</span><span class="p">:</span>
+            <span class="nb">super</span><span class="p">(</span><span class="n">_TemporaryURIFileIO</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pre_close_action</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">pre_close_action</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">temp_name</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">delete_tempfile</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">temp_name</span><span class="p">)</span>
+        <span class="c1">#end if</span>
+    <span class="c1">#end def</span>
+<span class="c1">#end class</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">uriutils</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../storage.html">Storages Documentation</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Yanchuan Sim.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

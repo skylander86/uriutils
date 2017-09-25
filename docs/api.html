@@ -1,0 +1,318 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>API Documentation &#8212; uriutils 0.1.13 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1.13',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Storages Documentation" href="storage.html" />
+    <link rel="prev" title="uriutils-0.1 documentation" href="index.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="api-documentation">
+<h1>API Documentation<a class="headerlink" href="#api-documentation" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="read-write-functions">
+<h2>Read / Write functions<a class="headerlink" href="#read-write-functions" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="uriutils.uriutils.uri_open">
+<code class="descclassname">uriutils.uriutils.</code><code class="descname">uri_open</code><span class="sig-paren">(</span><em>uri</em>, <em>mode='rb'</em>, <em>auto_compress=True</em>, <em>in_memory=True</em>, <em>delete_tempfile=True</em>, <em>textio_args={}</em>, <em>storage_args={}</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uriutils/uriutils.html#uri_open"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uriutils.uriutils.uri_open" title="Permalink to this definition">¶</a></dt>
+<dd><p>Opens a URI for reading / writing.
+Analogous to the <a class="reference external" href="https://docs.python.org/3/library/functions.html#open" title="(in Python v3.6)"><code class="xref py py-func docutils literal"><span class="pre">open()</span></code></a> function.
+This method supports <code class="docutils literal"><span class="pre">with</span></code> context handling:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">uri_open</span><span class="p">(</span><span class="s1">&#39;http://www.example.com&#39;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>uri</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – URI of file to open</li>
+<li><strong>mode</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – Either <code class="docutils literal"><span class="pre">rb</span></code>, <code class="docutils literal"><span class="pre">r</span></code>, <code class="docutils literal"><span class="pre">w</span></code>, or <code class="docutils literal"><span class="pre">wb</span></code> for read/write modes in binary/text respectiely</li>
+<li><strong>auto_compress</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.6)"><em>bool</em></a>) – Whether to automatically use the <a class="reference external" href="https://docs.python.org/3/library/gzip.html#module-gzip" title="(in Python v3.6)"><code class="xref py py-mod docutils literal"><span class="pre">gzip</span></code></a> module with <code class="docutils literal"><span class="pre">.gz</span></code> URIsF</li>
+<li><strong>in_memory</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.6)"><em>bool</em></a>) – Whether to store entire file in memory or in a local temporary file</li>
+<li><strong>delete_tempfile</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.6)"><em>bool</em></a>) – When <code class="xref py py-attr docutils literal"><span class="pre">in_memory</span></code> is <code class="docutils literal"><span class="pre">False</span></code>, whether to delete the temporary file on close</li>
+<li><strong>textio_args</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.6)"><em>dict</em></a>) – Keyword arguments to pass to <a class="reference external" href="https://docs.python.org/3/library/io.html#io.TextIOWrapper" title="(in Python v3.6)"><code class="xref py py-class docutils literal"><span class="pre">io.TextIOWrapper</span></code></a> for text read/write mode</li>
+<li><strong>storage_args</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.6)"><em>dict</em></a>) – Keyword arguments to pass to the underlying storage object</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">file-like object to URI</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="uriutils.uriutils.uri_read">
+<code class="descclassname">uriutils.uriutils.</code><code class="descname">uri_read</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uriutils/uriutils.html#uri_read"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uriutils.uriutils.uri_read" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reads the contents of a URI into a string or bytestring.
+See <code class="xref py py-func docutils literal"><span class="pre">uri_open()</span></code> for complete description of keyword parameters.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Contents of URI</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)">str</a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#bytes" title="(in Python v3.6)">bytes</a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="uriutils.uriutils.uri_dump">
+<code class="descclassname">uriutils.uriutils.</code><code class="descname">uri_dump</code><span class="sig-paren">(</span><em>uri</em>, <em>content</em>, <em>mode='wb'</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uriutils/uriutils.html#uri_dump"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uriutils.uriutils.uri_dump" title="Permalink to this definition">¶</a></dt>
+<dd><p>Dumps the contents of a string/bytestring into a URI.
+See <code class="xref py py-func docutils literal"><span class="pre">uri_open()</span></code> for complete description of keyword parameters.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>uri</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – URI to dump contents to</li>
+<li><strong>content</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – Contents to write to URI</li>
+<li><strong>mode</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – Either <code class="docutils literal"><span class="pre">w</span></code>, or <code class="docutils literal"><span class="pre">wb</span></code> to write binary/text content respectiely</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="uri-information">
+<h2>URI information<a class="headerlink" href="#uri-information" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="uriutils.uriutils.uri_exists">
+<code class="descclassname">uriutils.uriutils.</code><code class="descname">uri_exists</code><span class="sig-paren">(</span><em>uri</em>, <em>storage_args={}</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uriutils/uriutils.html#uri_exists"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uriutils.uriutils.uri_exists" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check if URI exists.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>uri</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – URI to check existence</li>
+<li><strong>storage_args</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.6)"><em>dict</em></a>) – Keyword arguments to pass to the underlying storage object</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><code class="docutils literal"><span class="pre">True</span></code> if URI exists</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.6)">bool</a></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="uriutils.uriutils.uri_exists_wait">
+<code class="descclassname">uriutils.uriutils.</code><code class="descname">uri_exists_wait</code><span class="sig-paren">(</span><em>uri</em>, <em>timeout=300</em>, <em>interval=5</em>, <em>storage_args={}</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uriutils/uriutils.html#uri_exists_wait"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uriutils.uriutils.uri_exists_wait" title="Permalink to this definition">¶</a></dt>
+<dd><p>Block / waits until URI exists.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>uri</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – URI to check existence</li>
+<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Number of seconds before timing out</li>
+<li><strong>interval</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.6)"><em>float</em></a>) – Calls <code class="xref py py-func docutils literal"><span class="pre">uri_exists()</span></code> every <code class="docutils literal"><span class="pre">interval</span></code> seconds</li>
+<li><strong>storage_args</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.6)"><em>dict</em></a>) – Keyword arguments to pass to the underlying storage object</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><code class="docutils literal"><span class="pre">True</span></code> if URI exists</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.6)">bool</a></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="uriutils.uriutils.get_uri_metadata">
+<code class="descclassname">uriutils.uriutils.</code><code class="descname">get_uri_metadata</code><span class="sig-paren">(</span><em>uri</em>, <em>storage_args={}</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uriutils/uriutils.html#get_uri_metadata"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uriutils.uriutils.get_uri_metadata" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the “metadata” from URI.
+This is most commonly used with bucket storage on the Cloud such as S3 and Google Cloud.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>uri</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – URI to get metadata for</li>
+<li><strong>storage_args</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.6)"><em>dict</em></a>) – Keyword arguments to pass to the underlying storage object</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Metadata associated with URI</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.6)">dict</a></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="uriutils.uriutils.get_uri_obj">
+<code class="descclassname">uriutils.uriutils.</code><code class="descname">get_uri_obj</code><span class="sig-paren">(</span><em>uri</em>, <em>storage_args={}</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uriutils/uriutils.html#get_uri_obj"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uriutils.uriutils.get_uri_obj" title="Permalink to this definition">¶</a></dt>
+<dd><p>Retrieve the underlying storage object based on the URI (i.e., scheme).</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>uri</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – URI to get storage object for</li>
+<li><strong>storage_args</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.6)"><em>dict</em></a>) – Keyword arguments to pass to the underlying storage object</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="argument-parser-types">
+<h2>Argument Parser types<a class="headerlink" href="#argument-parser-types" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="uriutils.uriutils.URIType">
+<em class="property">class </em><code class="descclassname">uriutils.uriutils.</code><code class="descname">URIType</code><a class="reference internal" href="_modules/uriutils/uriutils.html#URIType"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uriutils.uriutils.URIType" title="Permalink to this definition">¶</a></dt>
+<dd><p>A convenience class that can be used as the <code class="docutils literal"><span class="pre">type</span></code> argument to <a class="reference external" href="https://docs.python.org/3/library/argparse.html#argparse.ArgumentParser.add_argument" title="(in Python v3.6)"><code class="xref py py-meth docutils literal"><span class="pre">argparse.ArgumentParser.add_argument()</span></code></a>.
+It will return the result of <a class="reference external" href="https://docs.python.org/3/library/urllib.parse.html#urllib.parse.urlparse" title="(in Python v3.6)"><code class="xref py py-func docutils literal"><span class="pre">urllib.parse.urlparse()</span></code></a>.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="uriutils.uriutils.URIFileType">
+<em class="property">class </em><code class="descclassname">uriutils.uriutils.</code><code class="descname">URIFileType</code><span class="sig-paren">(</span><em>mode='rb'</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uriutils/uriutils.html#URIFileType"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uriutils.uriutils.URIFileType" title="Permalink to this definition">¶</a></dt>
+<dd><p>A convenience class that can be used as the <code class="docutils literal"><span class="pre">type</span></code> argument to <a class="reference external" href="https://docs.python.org/3/library/argparse.html#argparse.ArgumentParser.add_argument" title="(in Python v3.6)"><code class="xref py py-meth docutils literal"><span class="pre">argparse.ArgumentParser.add_argument()</span></code></a>.
+It will return a file-like object using <code class="xref py py-func docutils literal"><span class="pre">uri_open()</span></code>.</p>
+<p>See <code class="xref py py-func docutils literal"><span class="pre">uri_open()</span></code> for complete description of keyword parameters.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="uriutils.uriutils.URIDirType">
+<em class="property">class </em><code class="descclassname">uriutils.uriutils.</code><code class="descname">URIDirType</code><span class="sig-paren">(</span><em>create=False</em>, <em>storage_args={}</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uriutils/uriutils.html#URIDirType"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uriutils.uriutils.URIDirType" title="Permalink to this definition">¶</a></dt>
+<dd><p>A convenience class that can be used as the <code class="docutils literal"><span class="pre">type</span></code> argument to <a class="reference external" href="https://docs.python.org/3/library/argparse.html#argparse.ArgumentParser.add_argument" title="(in Python v3.6)"><code class="xref py py-meth docutils literal"><span class="pre">argparse.ArgumentParser.add_argument()</span></code></a>.
+It will return the result of <a class="reference external" href="https://docs.python.org/3/library/urllib.parse.html#urllib.parse.urlparse" title="(in Python v3.6)"><code class="xref py py-func docutils literal"><span class="pre">urllib.parse.urlparse()</span></code></a>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>create</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.6)"><em>bool</em></a>) – Whether to create directory (and thus “ensure” that directory exists)</li>
+<li><strong>storage_args</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.6)"><em>dict</em></a>) – Keyword arguments to pass to the underlying storage object</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">uriutils</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">API Documentation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#read-write-functions">Read / Write functions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#uri-information">URI information</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#argument-parser-types">Argument Parser types</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="storage.html">Storages Documentation</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">uriutils-0.1 documentation</a></li>
+      <li>Next: <a href="storage.html" title="next chapter">Storages Documentation</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Yanchuan Sim.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="_sources/api.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
