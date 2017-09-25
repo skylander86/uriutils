@@ -123,9 +123,9 @@ html_sidebars = {
 }
 
 intersphinx_mapping = {
-    'http://docs.python.org/3': None,
+    'https://docs.python.org/3': None,
     'http://docs.python-requests.org/en/master/': None,
-    'http://boto3.readthedocs.io/en/latest/': None,
+    'https://boto3.readthedocs.io/en/latest/': None,
     'https://googlecloudplatform.github.io/google-cloud-python/latest/': None,
 }
 
