@@ -14,7 +14,6 @@ Currently, the following storage systems are supported:
 
 .. toctree::
    :maxdepth: 2
-   :caption: Table of Contents:
 
    api
    storage
@@ -23,5 +22,4 @@ Indices and tables
 ==================
 
 * :ref:`genindex`
-* :ref:`modindex`
 * :ref:`search`
