@@ -36,7 +36,7 @@ Or, writing to a file with argument parser is as easy as::
 
 And you can run ``python uri.py --output s3://example-bucket/output.txt``.
 
-For complete documentation, please see `uriutils-0.1 documentation <https://skylander86.github.io/uriutils/>`_.
+For complete documentation, please see `uriutils-0.1 documentation <http://uriutils.readthedocs.io>`_.
 
 Contribution
 ------------
