@@ -7,7 +7,33 @@ This package aims to make it transparent to the user and the developer the under
 Usage
 -----
 
-See `uriutils-0.1 documentation <https://skylander86.github.io/uriutils/>`_.
+Example::
+
+    with uri_open('http://www.example.com', mode='r') as f:
+        contents = f.read()
+
+Example with argument parser::
+
+    parser = ArgumentParser(description='Read text file from URI.')
+    parser.add_argument('-i', '--input', type=URIFileType('r'), metavar='<input>', help='Input file URI.')
+    A = parser.parse_args()
+
+    contents = A.input.read()
+    print(contents)
+
+Or, writing to a file with argument parser is as easy as::
+
+    parser = ArgumentParser(description='Write text file to URI.')
+    parser.add_argument('-o', '--output', type=URIFileType('w'), metavar='<output>', help='Output file URI.')
+    A = parser.parse_args()
+
+    A.output.write('Hello world!\n')
+    A.output.close()
+
+
+And you can run ``python uri.py --output s3://example-bucket/output.txt``.
+
+For complete documentation, please see `uriutils-0.1 documentation <https://skylander86.github.io/uriutils/>`_.
 
 Contribution
 ------------
