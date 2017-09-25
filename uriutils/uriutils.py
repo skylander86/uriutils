@@ -1,7 +1,12 @@
 """
-This module provides wrapper function for transparently handling files regardless of location (local, cloud, etc).
+This module contains functions for opening and handling URIs as if they are normal files.
+It also provides convenience functions for quick one liners and :mod:`argparse` types.
+
+* `Convenience functions <#uriutils.uriutils.uri_open>`_
+* `Argument parser types <#uriutils.uriutils.URIFileType>`_
 """
-__all__ = ['uri_open', 'uri_read', 'uri_dump', 'uri_exists', 'get_uri_metadata', 'uri_exists_wait', 'URIFileType', 'URIType', 'URIDirType', 'get_uri_obj']
+
+__all__ = ['uri_open', 'uri_read', 'uri_dump', 'uri_exists', 'uri_exists_wait', 'get_uri_metadata', 'get_uri_obj', 'URIFileType', 'URIType', 'URIDirType']
 
 # from contextlib import contextmanager
 import atexit
@@ -21,6 +26,13 @@ logger = logging.getLogger(__name__)
 
 
 def get_uri_obj(uri, storage_args={}):
+    """
+    Retrieve the underlying storage object based on the URI (i.e., scheme).
+
+    :param str uri: URI to get storage object for
+    :param dict storage_args: Keyword arguments to pass to the underlying storage object
+    """
+
     if isinstance(uri, BaseURI): return uri
     uri_obj = None
 
@@ -38,6 +50,25 @@ def get_uri_obj(uri, storage_args={}):
 
 
 def uri_open(uri, mode='rb', auto_compress=True, in_memory=True, delete_tempfile=True, textio_args={}, storage_args={}):
+    """
+    Opens a URI for reading / writing.
+    Analogous to the :func:`open` function.
+    This method supports ``with`` context handling::
+
+        with uri_open('http://www.example.com', mode='r') as f:
+            print(f.read())
+
+    :param str uri: URI of file to open
+    :param str mode: Either ``rb``, ``r``, ``w``, or ``wb`` for read/write modes in binary/text respectiely
+    :param bool auto_compress: Whether to automatically use the :mod:`gzip` module with ``.gz`` URIsF
+    :param bool in_memory: Whether to store entire file in memory or in a local temporary file
+    :param bool delete_tempfile: When :attr:`in_memory` is ``False``, whether to delete the temporary file on close
+    :param dict textio_args: Keyword arguments to pass to :class:`io.TextIOWrapper` for text read/write mode
+    :param dict storage_args: Keyword arguments to pass to the underlying storage object
+
+    :returns: file-like object to URI
+    """
+
     if isinstance(uri, BaseURI): uri = str(uri)
     uri_obj = get_uri_obj(uri, storage_args)
 
@@ -82,6 +113,14 @@ def uri_open(uri, mode='rb', auto_compress=True, in_memory=True, delete_tempfile
 
 
 def uri_read(*args, **kwargs):
+    """
+    Reads the contents of a URI into a string or bytestring.
+    See :func:`uri_open` for complete description of keyword parameters.
+
+    :returns: Contents of URI
+    :rtype: str, bytes
+    """
+
     with uri_open(*args, **kwargs) as f:
         content = f.read()
     return content
@@ -89,6 +128,17 @@ def uri_read(*args, **kwargs):
 
 
 def uri_dump(uri, content, mode='wb', **kwargs):
+    """
+    Dumps the contents of a string/bytestring into a URI.
+    See :func:`uri_open` for complete description of keyword parameters.
+
+    :param str uri: URI to dump contents to
+    :param str content: Contents to write to URI
+    :param str mode: Either ``w``, or ``wb`` to write binary/text content respectiely
+    """
+
+    if 'r' in mode: raise ValueError('Read mode is not allowed for `uri_dump`.')
+
     with uri_open(uri, mode=mode, **kwargs) as f:
         f.write(content)
         f.flush()
@@ -97,18 +147,48 @@ def uri_dump(uri, content, mode='wb', **kwargs):
 
 
 def get_uri_metadata(uri, storage_args={}):
+    """
+    Get the "metadata" from URI.
+    This is most commonly used with bucket storage on the Cloud such as S3 and Google Cloud.
+
+    :param str uri: URI to get metadata for
+    :param dict storage_args: Keyword arguments to pass to the underlying storage object
+    :returns: Metadata associated with URI
+    :rtype: dict
+    """
+
     uri_obj = get_uri_obj(uri, storage_args)
     return uri_obj.get_metadata()
 #end def
 
 
 def uri_exists(uri, storage_args={}):
+    """
+    Check if URI exists.
+
+    :param str uri: URI to check existence
+    :param dict storage_args: Keyword arguments to pass to the underlying storage object
+    :returns: ``True`` if URI exists
+    :rtype: bool
+    """
+
     uri_obj = get_uri_obj(uri, storage_args)
     return uri_obj.exists()
 #end def
 
 
 def uri_exists_wait(uri, timeout=300, interval=5, storage_args={}):
+    """
+    Block / waits until URI exists.
+
+    :param str uri: URI to check existence
+    :param float timeout: Number of seconds before timing out
+    :param float interval: Calls :func:`uri_exists` every ``interval`` seconds
+    :param dict storage_args: Keyword arguments to pass to the underlying storage object
+    :returns: ``True`` if URI exists
+    :rtype: bool
+    """
+
     uri_obj = get_uri_obj(uri, storage_args)
     start_time = time.time()
     while time.time() - start_time < timeout:
@@ -123,6 +203,13 @@ def uri_exists_wait(uri, timeout=300, interval=5, storage_args={}):
 
 
 class URIFileType(object):
+    """
+    A convenience class that can be used as the ``type`` argument to :meth:`argparse.ArgumentParser.add_argument`.
+    It will return a file-like object using :func:`uri_open`.
+
+    See :func:`uri_open` for complete description of keyword parameters.
+    """
+
     def __init__(self, mode='rb', **kwargs):
         self.kwargs = kwargs
         self.kwargs['mode'] = mode
@@ -137,6 +224,11 @@ class URIFileType(object):
 
 
 class URIType(object):
+    """
+    A convenience class that can be used as the ``type`` argument to :meth:`argparse.ArgumentParser.add_argument`.
+    It will return the result of :func:`urllib.parse.urlparse`.
+    """
+
     def __call__(self, uri):
         o = urlparse(uri)
         return o
@@ -145,6 +237,14 @@ class URIType(object):
 
 
 class URIDirType(object):
+    """
+    A convenience class that can be used as the ``type`` argument to :meth:`argparse.ArgumentParser.add_argument`.
+    It will return the result of :func:`urllib.parse.urlparse`.
+
+    :param bool create: Whether to create directory (and thus "ensure" that directory exists)
+    :param dict storage_args: Keyword arguments to pass to the underlying storage object
+    """
+
     def __init__(self, create=False, storage_args={}):
         self.create = create
         self.storage_args = storage_args
