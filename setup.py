@@ -1,10 +1,19 @@
+import os
 from setuptools import setup
+
+SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
+
+with open(os.path.join(SCRIPT_DIR, 'README.rst'), 'r') as readme_file:
+    readme = readme_file.read()
+
+with open(os.path.join(SCRIPT_DIR, 'VERSION'), 'r') as f:
+    version = f.read().strip()
 
 setup(
     name='uriutils',
-    version='0.1.13',
+    version=version,
     description='Easily read and write to different storage platforms in Python.',
-    long_description=open('README.rst', 'r').read(),
+    long_description=readme,
     classifiers=[
         'Development Status :: 4 - Beta',
         'License :: OSI Approved :: Apache Software License',
