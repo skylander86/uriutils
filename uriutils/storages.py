@@ -7,6 +7,7 @@ __all__ = ['STORAGES', 'URIBytesOutput', 'BaseURI']
 from io import BytesIO
 import os
 import shutil
+import warnings
 
 try: from urlparse import urlparse  # Python 2
 except ImportError: from urllib.parse import urlparse  # Python 3
@@ -76,8 +77,10 @@ class BaseURI(object):
         """
         :param dict storage_args: Arguments that will be applied to the storage system for read/write operations
         """
-
-        self.storage_args = dict((k, v) for k, v in storage_args.items() if k in self.VALID_STORAGE_ARGS)
+        self.storage_args = storage_args
+        for k in storage_args.keys():
+            if k not in self.VALID_STORAGE_ARGS:
+                warnings.warn('"{}" is not a valid storage argument.'.format(k), category=UserWarning, stacklevel=2)
     #end def
 
     def get_content(self):
@@ -248,7 +251,7 @@ class S3URI(BaseURI):
     SUPPORTED_SCHEMES = set(['s3'])
     """Supported schemes for :class:`S3URI`."""
 
-    VALID_STORAGE_ARGS = ['CacheControl', 'ContentDisposition', 'ContentEncoding', 'ContentLanguage', 'ContentLength', 'ContentMD5', 'ContentType', 'Expires', 'GrantFullControl', 'GrantRead', 'GrantReadACP', 'GrantWriteACP', 'Metadata', 'ServerSideEncryption', 'StorageClass', 'WebsiteRedirectLocation', 'SSECustomerAlgorithm', 'SSECustomerKey', 'SSEKMSKeyId', 'RequestPayer', 'Tagging']
+    VALID_STORAGE_ARGS = ['ACL', 'CacheControl', 'ContentDisposition', 'ContentEncoding', 'ContentLanguage', 'ContentLength', 'ContentMD5', 'ContentType', 'Expires', 'GrantFullControl', 'GrantRead', 'GrantReadACP', 'GrantWriteACP', 'Metadata', 'ServerSideEncryption', 'StorageClass', 'WebsiteRedirectLocation', 'SSECustomerAlgorithm', 'SSECustomerKey', 'SSEKMSKeyId', 'RequestPayer', 'Tagging']
     """Storage arguments allowed to pass to :class:`S3.Client` methods."""
 
     s3_resource = None
