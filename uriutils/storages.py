@@ -77,10 +77,13 @@ class BaseURI(object):
         """
         :param dict storage_args: Arguments that will be applied to the storage system for read/write operations
         """
-        self.storage_args = storage_args
+        self.storage_args = {}
         for k in storage_args.keys():
-            if k not in self.VALID_STORAGE_ARGS:
+            if k in self.VALID_STORAGE_ARGS:
+                self.storage_args[k] = storage_args[k]
+            else:
                 warnings.warn('"{}" is not a valid storage argument.'.format(k), category=UserWarning, stacklevel=2)
+        #end for
     #end def
 
     def get_content(self):
@@ -196,6 +199,9 @@ class FileURI(BaseURI):
 
     SUPPORTED_SCHEMES = set(['file', ''])
     """Supported schemes for :class:`FileURI`."""
+
+    VALID_STORAGE_ARGS = ['mode', 'buffering', 'encoding', 'errors', 'newline', 'closefd', 'opener']
+    """Storage arguments allowed to pass to :meth:`open` methods."""
 
     @classmethod
     def parse_uri(cls, uri, storage_args={}):
